@@ -1,0 +1,37 @@
+name: naive-rag
+services:
+  rag:
+    network_mode: none
+    build:
+      context: .
+      target: simulation
+    image: naive-rag:simulation
+    volumes:
+      - ./results:/app/results
+  notebook:
+    build:
+      context: .
+      target: simulation
+    image: naive-rag:simulation
+    profiles: [notebook]
+    command: [python, -m, jupyterlab, --ip=0.0.0.0, --port=8888, --no-browser, --ServerApp.root_dir=/app]
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - ./results:/app/results
+      - ./notebooks:/app/notebooks
+  real:
+    profiles: [real]
+    build:
+      context: .
+      target: runtime
+    image: naive-rag:runtime
+    command: [python, naive_rag.py, avaliar]
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/app/data
+      - ./storage:/app/storage
+      - ./results:/app/results
+      - ./.cache:/app/.cache

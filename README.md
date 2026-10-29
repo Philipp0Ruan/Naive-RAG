@@ -43,13 +43,10 @@ O `.env` é ignorado pelo Git. Deixe a temperatura vazia para usar o padrão do 
 
 A instalação e a primeira indexação precisam de internet. O PDF tem cerca de 8 MB e o modelo de embeddings exige um download maior. Depois de baixados, o índice e a busca funcionam localmente. A geração continua precisando de acesso à OpenAI e pode consumir créditos da sua conta.
 
-O arquivo `requirements-lock.txt` registra também as versões das dependências indiretas do ambiente Windows validado. Para recriar esse ambiente depois de criar a `.venv`, use `python -m pip install -r requirements-lock.txt` com o Python desse ambiente. O índice extra declarado nesse arquivo fornece a versão CPU do PyTorch.
-
 ## Executar a simulação em Python
 
 ```powershell
 .\.venv\Scripts\python.exe naive_rag.py simular
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 A simulação salva `results/simulacao.json` e `results/simulacao.md`, com avisos explícitos e `simulado: true`. A busca por cosseno, a montagem do contexto, a recarga do índice, as citações e a exportação usam as funções de produção; os dados e as dependências de geração são de teste. O cenário sem evidência verifica que a geração não é tentada. Não são medidos tokens, custo nem qualidade de um LLM real.
@@ -132,13 +129,9 @@ A conferência automática identifica páginas citadas fora do contexto. Ela nã
 
 As cinco perguntas originais estão em [evaluation/perguntas.json](evaluation/perguntas.json). Perguntas interpretativas podem exigir evidências espalhadas pelo livro; oito trechos nem sempre cobrem todos os pontos. O prompt pede ao modelo que declare as limitações, mas isso também precisa ser avaliado.
 
-## Testes
+## Validação local
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
-
-Os testes cobrem a limpeza, a sobreposição dos trechos, o limite do contexto, a busca por cosseno, a recarga do índice, arquivos alterados, credenciais ausentes e a montagem da chamada à OpenAI com uma resposta simulada. Os testes de integração acrescentam cinco perguntas com fixtures, ausência de evidência, resposta vazia/incompleta e erros simulados de autenticação, limite da API e conexão. O teste simulado não substitui a execução com a API real.
+A suíte local tem 15 testes, incluindo integração e falhas simuladas. Os arquivos de teste não são distribuídos pelo Git. A simulação pode ser executada com `python naive_rag.py simular`.
 
 ## Arquivos
 
@@ -149,8 +142,6 @@ config.json                   parâmetros do experimento
 notebooks/naive_rag.ipynb      experimento no Jupyter
 evaluation/perguntas.json      cinco perguntas
 evaluation/rubrica.md          critérios de revisão
-tests/test_naive_rag.py        testes da base
-tests/test_simulacao.py        integração e falhas simuladas
 results/                      relatórios do experimento
 resume.md                     andamento deste projeto
 ```
@@ -165,3 +156,42 @@ O PDF, o índice, o cache do modelo, a `.venv`, o `.env` e o `CHECKLIST_EXECUCAO
 - [Sentence Transformers](https://sbert.net/docs/quickstart.html).
 - [Extração de texto com pypdf](https://pypdf.readthedocs.io/en/stable/user/extract-text.html).
 - [SDK Python da OpenAI e Responses API](https://developers.openai.com/api/reference/python).
+
+## Docker
+
+Dentro deste repositório, execute o cenário simulado:
+
+```powershell
+docker compose build rag
+docker compose run --rm rag
+```
+
+Para abrir o Jupyter:
+
+```powershell
+docker compose up notebook
+```
+
+O Jupyter fica em http://localhost:8888; use o token informado no terminal. O notebook começa com `MODO = "simulado"`. A simulação não precisa de chave, PDF nem download de modelos. Os relatórios são salvos localmente em `results/`.
+
+A imagem padrão usa o alvo leve `simulation`. O alvo `runtime` instala também os modelos locais via dependências PyTorch/Sentence Transformers; o download dos pesos acontece na primeira indexação. Depois da aprovação para os testes reais:
+
+```powershell
+Copy-Item .env.example .env
+# Preencha a chave somente no .env local.
+docker compose --profile real build real
+docker compose --profile real run --rm real python naive_rag.py indexar
+docker compose --profile real run --rm real
+```
+
+Mantenha o `.env` existente se ele já estiver configurado. A imagem não inclui credenciais, dados locais, índices, testes ou relatórios. As pastas de dados, cache, índice e resultados são montadas como volumes na execução real.
+
+O Jupyter padrão usa a imagem simulada. Para um notebook com modelos reais, depois da aprovação:
+
+```powershell
+docker compose --profile real run --rm -p 127.0.0.1:8888:8888 -v ./notebooks:/app/notebooks real python -m jupyterlab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.root_dir=/app
+```
+
+## Versionamento
+
+Os testes e relatórios ficam apenas no computador, ignorados pelo Git e pelo contexto Docker. O comando `simular` faz parte da aplicação e permite conferir o fluxo a partir de um clone novo. Os commits novos usam prefixos como `feat:`, `fix:`, `chore:` e `docs:`.

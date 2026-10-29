@@ -34,6 +34,13 @@ evidência para a pergunta, diga: Não encontrei evidências suficientes nos tre
 recuperados. Não invente citações nem números de página."""
 
 
+def versao_instalada(nome):
+    try:
+        return importlib.metadata.version(nome)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
 def agora() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -361,7 +368,7 @@ class NaiveRAG:
         bibliotecas = ("numpy", "pypdf", "sentence-transformers", "transformers", "torch", "openai")
         dados = {"executado_em": agora(), "abordagem": "naive", "config": asdict(self.config),
                  "indice": self.manifesto, "prompt": PROMPT,
-                 "versoes": {b: importlib.metadata.version(b) for b in bibliotecas},
+                 "versoes": {b: versao_instalada(b) for b in bibliotecas},
                  "python": sys.version.split()[0], "tempo_lote_s": round(time.perf_counter() - inicio, 4),
                  "revisao_humana": "pendente", "resultados": resultados}
         sufixo = "busca" if somente_busca else "respostas"
