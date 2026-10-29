@@ -377,12 +377,20 @@ class NaiveRAG:
 def salvar_markdown(destino: Path, dados: dict) -> None:
     linhas = ["# Resultado do Naive RAG", "", f"Execução: {dados['executado_em']}",
               "", "Revisão humana das evidências: pendente.", ""]
+    if dados.get("simulado"):
+        linhas = ["# SIMULAÇÃO — Naive RAG", "", dados["aviso"], "",
+                  f"Execução simulada: {dados['executado_em']}", "",
+                  "Tokens e custos reais: não medidos. Não é avaliação de qualidade de um LLM.", ""]
     for item in dados["resultados"]:
         linhas += [f"## {item['id']} — {item['pergunta']}", "",
                    item["resposta"] or "Somente recuperação: nenhuma resposta de LLM foi gerada.", ""]
         for fonte in item["fontes_contexto"]:
             linhas += [f"### PDF p. {fonte['pdf_page']} · livro p. {fonte['printed_page']} · {fonte['id']}",
                        "", f"Similaridade: {fonte['similarity']:.4f}", "", fonte["text"], ""]
+    if dados.get("simulado") and dados.get("cenario_sem_evidencia"):
+        negativo = dados["cenario_sem_evidencia"]
+        linhas += ["## Cenário simulado sem evidência", "", negativo["resposta"], "",
+                   "Nenhuma geração foi tentada para este cenário.", ""]
     destino.write_text("\n".join(linhas), encoding="utf-8")
 
 
@@ -401,8 +409,15 @@ def main() -> int:
     avaliar = comandos.add_parser("avaliar", help="Executar e exportar as cinco perguntas")
     avaliar.add_argument("--somente-busca", action="store_true")
     avaliar.add_argument("--nome", help="Nome do resultado, sem diretórios ou extensão")
+    simular = comandos.add_parser("simular", help="Testar o fluxo com corpus e LLM fictícios, sem rede ou chave")
+    simular.add_argument("--nome", default="simulacao", help="Nome dos relatórios de simulação")
     args = parser.parse_args()
     try:
+        if args.comando == "simular":
+            from simulacao import AVISO, executar_simulacao
+            print(AVISO)
+            print(f"Simulação salva em {executar_simulacao(nome=args.nome)}")
+            return 0
         rag = NaiveRAG()
         if args.comando == "indexar":
             print(json.dumps(rag.indexar(args.refazer), ensure_ascii=False, indent=2))

@@ -16,7 +16,9 @@ A implementação está em [naive_rag.py](naive_rag.py). O [Jupyter Notebook](no
 - Execução das cinco perguntas, com exportação em JSON e Markdown.
 - Testes locais que não fazem chamadas pagas.
 
-A verificação de respostas reais depende de uma chave válida da OpenAI. Os relatórios no modo `somente_busca` contêm evidências recuperadas, sem respostas de LLM. O andamento e as pendências estão em [resume.md](resume.md).
+Os testes atuais usam **simulação**, conforme combinado. O comando `simular` exercita as cinco perguntas com documentos sintéticos, vetores programados e um cliente falso de LLM. Não lê credenciais, não baixa o livro ou modelos e bloqueia conexões de rede durante o cenário. Os textos fictícios não avaliam a qualidade das respostas sobre a obra.
+
+A geração real com OpenAI fica para depois da aprovação. Os relatórios anteriores no modo `somente_busca` contêm evidências recuperadas, sem respostas de LLM. O andamento está em [resume.md](resume.md).
 
 ## Preparar o ambiente
 
@@ -29,7 +31,7 @@ python -m venv .venv
 Copy-Item .env.example .env
 ```
 
-Se o `.env` já existir, mantenha o arquivo atual. Preencha nele:
+Se o `.env` já existir, mantenha o arquivo atual. Depois da aprovação para os testes reais, preencha nele:
 
 ```dotenv
 OPENAI_API_KEY=sua_chave_local
@@ -43,7 +45,16 @@ A instalação e a primeira indexação precisam de internet. O PDF tem cerca de
 
 O arquivo `requirements-lock.txt` registra também as versões das dependências indiretas do ambiente Windows validado. Para recriar esse ambiente depois de criar a `.venv`, use `python -m pip install -r requirements-lock.txt` com o Python desse ambiente. O índice extra declarado nesse arquivo fornece a versão CPU do PyTorch.
 
-## Executar em Python
+## Executar a simulação em Python
+
+```powershell
+.\.venv\Scripts\python.exe naive_rag.py simular
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+A simulação salva `results/simulacao.json` e `results/simulacao.md`, com avisos explícitos e `simulado: true`. A busca por cosseno, a montagem do contexto, a recarga do índice, as citações e a exportação usam as funções de produção; os dados e as dependências de geração são de teste. O cenário sem evidência verifica que a geração não é tentada. Não são medidos tokens, custo nem qualidade de um LLM real.
+
+## Comandos para a execução real, depois da aprovação
 
 ```powershell
 # Baixa o livro, cria o índice ou recarrega um índice compatível
@@ -79,7 +90,9 @@ O script encontra dados e configurações a partir da sua própria localização
 
 Selecione o kernel **Python (Naive RAG)** e execute as células em ordem. No VS Code, também é possível selecionar diretamente o Python da `.venv`.
 
-O notebook começa com `GERAR_RESPOSTAS = False`, permitindo conferir extração, indexação e busca. Para gerar as respostas, configure o `.env`, altere para `True` e execute as células de geração e avaliação.
+O notebook começa com `MODO = "simulado"` e pode ser executado inteiro sem chave, PDF ou download de modelos. Todas as saídas da simulação são identificadas como fictícias.
+
+Depois da aprovação, `MODO = "somente_busca"` permite usar a busca real sem geração, e `MODO = "real"` habilita as chamadas à OpenAI com o `.env` configurado. Nenhum teste real é agendado automaticamente.
 
 ## Configuração do experimento
 
@@ -125,17 +138,19 @@ As cinco perguntas originais estão em [evaluation/perguntas.json](evaluation/pe
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Os testes cobrem a limpeza, a sobreposição dos trechos, o limite do contexto, a busca por cosseno, a recarga do índice, arquivos alterados, credenciais ausentes e a montagem da chamada à OpenAI com uma resposta simulada. O teste simulado não substitui a execução com a API real.
+Os testes cobrem a limpeza, a sobreposição dos trechos, o limite do contexto, a busca por cosseno, a recarga do índice, arquivos alterados, credenciais ausentes e a montagem da chamada à OpenAI com uma resposta simulada. Os testes de integração acrescentam cinco perguntas com fixtures, ausência de evidência, resposta vazia/incompleta e erros simulados de autenticação, limite da API e conexão. O teste simulado não substitui a execução com a API real.
 
 ## Arquivos
 
 ```text
 naive_rag.py                  implementação e comandos
+simulacao.py                  cenário offline de integração
 config.json                   parâmetros do experimento
 notebooks/naive_rag.ipynb      experimento no Jupyter
 evaluation/perguntas.json      cinco perguntas
 evaluation/rubrica.md          critérios de revisão
-tests/test_naive_rag.py        testes sem chamadas pagas
+tests/test_naive_rag.py        testes da base
+tests/test_simulacao.py        integração e falhas simuladas
 results/                      relatórios do experimento
 resume.md                     andamento deste projeto
 ```
