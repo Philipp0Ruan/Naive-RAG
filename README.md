@@ -1,85 +1,152 @@
 # Naive RAG — Os Sertões
 
-Este projeto vai usar busca por similaridade para responder perguntas sobre **Os Sertões**, de Euclides da Cunha. A ideia é dividir o livro em trechos, encontrar os mais próximos de cada pergunta e entregar esse contexto ao modelo de linguagem.
+Um experimento para responder às cinco perguntas do desafio sobre **Os Sertões**, de Euclides da Cunha. O programa extrai o texto do PDF, divide a obra em trechos, encontra os mais próximos da pergunta e entrega esse contexto à OpenAI.
 
-Faz parte do Desafio RAG, com três abordagens em repositórios separados:
-[Naive RAG](https://github.com/Philipp0Ruan/Naive-RAG),
-[Parent RAG](https://github.com/Philipp0Ruan/Parent-RAG) e
-[Rerank RAG](https://github.com/Philipp0Ruan/Rerank-RAG).
+A implementação está em [naive_rag.py](naive_rag.py). O [Jupyter Notebook](notebooks/naive_rag.ipynb) usa as mesmas funções e a mesma configuração.
 
-## Situação atual
+## O que está implementado
 
-A estrutura inicial está pronta nos formatos Python (.py) e Jupyter Notebook (.ipynb). Os dois compartilham a base Python e o roteiro de desenvolvimento; a leitura do PDF, a recuperação e a geração das respostas ainda serão implementadas. Ainda não há respostas geradas nem resultados de avaliação.
+- Download do PDF e conferência do SHA-256 da edição.
+- Extração por página, limpeza de margens e correção de palavras hifenizadas em quebras de linha.
+- Trechos com sobreposição, fonte, página do PDF e página impressa.
+- Embeddings locais com `intfloat/multilingual-e5-small`, em revisão fixa.
+- Busca por similaridade de cosseno, sem expansão para pais e sem reranking.
+- Persistência dos embeddings e metadados, com conferência ao recarregar.
+- Geração pela Responses API da OpenAI, orientada a responder com base nos trechos e citar páginas.
+- Execução das cinco perguntas, com exportação em JSON e Markdown.
+- Testes locais que não fazem chamadas pagas.
 
-## Como vai funcionar
+A verificação de respostas reais depende de uma chave válida da OpenAI. Os relatórios no modo `somente_busca` contêm evidências recuperadas, sem respostas de LLM. O andamento e as pendências estão em [resume.md](resume.md).
 
-```text
-PDF → texto por página → trechos → embeddings → busca por similaridade → contexto → resposta com fontes
-```
+## Preparar o ambiente
 
-- **Dividir o texto:** Escolher tamanho dos trechos e sobreposição; preservar página, fonte e identificador de cada trecho.
-- **Criar a busca:** Gerar embeddings dos trechos, montar o índice e recuperar os k trechos mais próximos da pergunta.
-- **Montar o contexto:** Exibir os trechos recuperados com suas páginas e respeitar o limite de contexto antes de gerar a resposta.
-
-Este será o ponto de partida da comparação. Vamos observar quando a busca encontra o assunto certo, mas perde informações porque o trecho recuperado é curto.
-
-## Perguntas do desafio
-
-1. Qual é a visão de Euclides da Cunha sobre o ambiente natural do sertão nordestino e como ele influencia a vida dos habitantes?
-2. Quais são as principais características da população sertaneja descritas por Euclides da Cunha? Como ele relaciona essas características com o ambiente em que vivem?
-3. Qual foi o contexto histórico e político que levou à Guerra de Canudos, segundo Euclides da Cunha?
-4. Como Euclides da Cunha descreve a figura de Antônio Conselheiro e seu papel na Guerra de Canudos?
-5. Quais são os principais aspectos da crítica social e política presentes em "Os Sertões"? Como esses aspectos refletem a visão do autor sobre o Brasil da época?
-
-As perguntas também estão em [evaluation/perguntas.json](evaluation/perguntas.json), com identificadores iguais nos três projetos.
-
-## Organização
-
-```text
-naive_rag.py                    # base Python e roteiro do experimento
-notebooks/naive_rag.ipynb   # notebook com etapas e uso da base Python
-evaluation/perguntas.json     # cinco perguntas do desafio
-data/                        # PDF e dados extraídos, somente locais
-results/                     # respostas e avaliações, quando forem geradas
-```
-
-Arquivos: [naive_rag.py](naive_rag.py) e [notebooks/naive_rag.ipynb](notebooks/naive_rag.ipynb).
-
-## Continuidade do desenvolvimento
-
-O [resume.md](resume.md) registra o andamento deste projeto e as próximas etapas. O controle detalhado fica no arquivo local `CHECKLIST_EXECUCAO.md`, ignorado pelo Git.
-
-## Desenvolvimento e execução
-
-Vamos implementar a base Python e o notebook por etapas: preparar o ambiente, carregar e conferir o livro, construir a recuperação, gerar as respostas e avaliar as evidências.
-
-Python e Jupyter serão usados para o experimento. O provedor do LLM, os modelos, as bibliotecas e suas versões serão definidos na implementação. As instruções de instalação e execução serão adicionadas aqui depois de validadas. Por enquanto, os arquivos carregam as perguntas e apresentam o roteiro; o pipeline RAG ainda será implementado.
-
-## Usar os dois formatos
-
-Na pasta do projeto, execute a preparação em Python:
+Use **Python 3.12**. No PowerShell, dentro desta pasta:
 
 ```powershell
-python naive_rag.py
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install -r requirements-notebook.txt
+Copy-Item .env.example .env
 ```
 
-O comando mostra as etapas e as cinco perguntas. Usa apenas a biblioteca padrão do Python, sem precisar de chave de API.
+Se o `.env` já existir, mantenha o arquivo atual. Preencha nele:
 
-Para usar o Jupyter, abra `notebooks/naive_rag.ipynb` no JupyterLab ou no VS Code com suporte a notebooks e selecione um kernel Python. Execute as células em ordem. O notebook importa a base `naive_rag.py`, mantendo as perguntas e as futuras funções em um só lugar.
+```dotenv
+OPENAI_API_KEY=sua_chave_local
+OPENAI_MODEL=gpt-5-mini
+OPENAI_TEMPERATURE=
+```
 
-A validação inicial foi feita com Python 3.12. A instalação do Jupyter e das dependências de RAG será definida na etapa de ambiente.
+O `.env` é ignorado pelo Git. Deixe a temperatura vazia para usar o padrão do modelo; alguns modelos não aceitam uma temperatura personalizada. O modelo de geração pode ser trocado por outro disponível na sua conta. O modelo efetivamente retornado pela API fica registrado nos resultados.
 
-## Como avaliar
+A instalação e a primeira indexação precisam de internet. O PDF tem cerca de 8 MB e o modelo de embeddings exige um download maior. Depois de baixados, o índice e a busca funcionam localmente. A geração continua precisando de acesso à OpenAI e pode consumir créditos da sua conta.
 
-Os trechos recuperados pela busca por similaridade devem ser usados diretamente no contexto da resposta, com identificação das fontes.
+O arquivo `requirements-lock.txt` registra também as versões das dependências indiretas do ambiente Windows validado. Para recriar esse ambiente depois de criar a `.venv`, use `python -m pip install -r requirements-lock.txt` com o Python desse ambiente. O índice extra declarado nesse arquivo fornece a versão CPU do PyTorch.
 
-Para cada pergunta, vamos guardar a resposta, os trechos utilizados, as páginas, os parâmetros e o tempo de execução. A revisão vai conferir se a resposta atende à pergunta e se as fontes sustentam o que o modelo escreveu. Afirmações sem evidência devem ser identificadas, e o modelo deve indicar quando o contexto for insuficiente.
+## Executar em Python
 
-Na comparação entre os projetos, vamos manter o mesmo PDF, as mesmas perguntas e, sempre que possível, o mesmo modelo de geração, embeddings, prompt e limite de contexto. As diferenças de configuração serão registradas junto dos resultados.
+```powershell
+# Baixa o livro, cria o índice ou recarrega um índice compatível
+.\.venv\Scripts\python.exe naive_rag.py indexar
 
-## Material de referência
+# Busca trechos sem chamar a OpenAI
+.\.venv\Scripts\python.exe naive_rag.py buscar "Como o ambiente influencia a vida do sertanejo?"
 
-- [PDF de Os Sertões disponibilizado pela Fundar](https://fundar.org.br/wp-content/uploads/2021/06/os-sertoes.pdf).
-- [Solução de referência da Rocketseat](https://github.com/rocketseat-education/ia-para-devs/tree/master/Desafio%20RAG).
+# Responde uma pergunta usando os trechos recuperados
+.\.venv\Scripts\python.exe naive_rag.py responder "Como Euclides descreve Antônio Conselheiro?"
 
-O PDF será salvo localmente em `data/os-sertoes.pdf`. A edição inclui material editorial; vamos separar esse conteúdo do texto de Euclides antes de avaliar as respostas e distinguir o número da página no PDF da numeração impressa no livro.
+# Executa e exporta as cinco perguntas do desafio
+.\.venv\Scripts\python.exe naive_rag.py avaliar
+
+# Executa somente a recuperação das cinco perguntas, sem chave de API
+.\.venv\Scripts\python.exe naive_rag.py avaliar --somente-busca
+```
+
+As consultas precisam de um índice criado previamente. Se alterar tamanho dos trechos, revisão do embedding ou limites do corpus, reconstrua-o:
+
+```powershell
+.\.venv\Scripts\python.exe naive_rag.py indexar --refazer
+```
+
+O script encontra dados e configurações a partir da sua própria localização; pode ser chamado por caminho completo mesmo fora da pasta do projeto.
+
+## Executar no Jupyter
+
+```powershell
+.\.venv\Scripts\python.exe -m ipykernel install --prefix .venv --name naive-rag --display-name "Python (Naive RAG)"
+.\.venv\Scripts\python.exe -m jupyterlab notebooks/naive_rag.ipynb
+```
+
+Selecione o kernel **Python (Naive RAG)** e execute as células em ordem. No VS Code, também é possível selecionar diretamente o Python da `.venv`.
+
+O notebook começa com `GERAR_RESPOSTAS = False`, permitindo conferir extração, indexação e busca. Para gerar as respostas, configure o `.env`, altere para `True` e execute as células de geração e avaliação.
+
+## Configuração do experimento
+
+Os parâmetros estão em [config.json](config.json):
+
+| Parâmetro | Valor inicial |
+| --- | --- |
+| Corpus | Páginas físicas 33 a 653 do PDF |
+| Embedding | `intfloat/multilingual-e5-small` |
+| Revisão do embedding | `614241f622f53c4eeff9890bdc4f31cfecc418b3` |
+| Trecho | Até 350 tokens do tokenizer do E5 |
+| Sobreposição | 50 tokens, dentro da mesma página |
+| Busca | Oito trechos por similaridade de cosseno |
+| Contexto | Até 16.000 caracteres, com trechos inteiros |
+| Limite de saída da OpenAI | 4.096 tokens |
+| Limiar de similaridade | Desativado; não foi calibrado |
+
+Os textos recebem o prefixo `passage: ` e as perguntas, `query: `, conforme as instruções do E5. O programa confere se cada trecho cabe no modelo, incluindo o prefixo. Os embeddings são normalizados, e a busca calcula o produto escalar com NumPy. Para o tamanho deste livro, um índice exato é suficiente e facilita conferir o que foi recuperado.
+
+O orçamento de contexto é medido em caracteres, não em tokens do LLM. Similaridade não representa uma probabilidade de a resposta estar correta.
+
+## Corpus e páginas
+
+O PDF tem 658 páginas físicas. O corpus começa na nota preliminar de Euclides, na página PDF 33, e inclui as notas do autor à segunda edição até a página PDF 653. Apresentação, prefácio, sumário e créditos editoriais ficam de fora.
+
+Nesta edição, a página impressa corresponde à página física do PDF menos 30. Por exemplo, a descrição do sertanejo na página impressa 115 está na página PDF 145. Essa regra vale para a edição identificada pelo hash do `config.json`.
+
+Os trechos conservam as duas referências. A resposta usa `[PDF p. N]` para facilitar a conferência no arquivo. A limpeza não resolve todos os detalhes de diagramação: capitulares e algumas ligaturas podem deixar marcas na extração.
+
+As notas de rodapé do miolo permanecem no texto extraído. Algumas são editoriais, identificadas por `(PRP)`; o prompt orienta o modelo a não atribuí-las a Euclides. A distinção também deve ser conferida na revisão das respostas.
+
+## Resultados e avaliação
+
+Cada lote produz arquivos em `results/`, com perguntas, respostas quando geradas, trechos recuperados, trechos usados no contexto, páginas, similaridades, configurações, versões e tempos. O uso de tokens é registrado quando a API o fornece. O custo fica como `null`: o projeto não estima preços nem apresenta ausência de medição como custo zero.
+
+A conferência automática identifica páginas citadas fora do contexto. Ela não verifica se uma afirmação está sustentada pelo trecho. Essa revisão é manual, seguindo [evaluation/rubrica.md](evaluation/rubrica.md).
+
+As cinco perguntas originais estão em [evaluation/perguntas.json](evaluation/perguntas.json). Perguntas interpretativas podem exigir evidências espalhadas pelo livro; oito trechos nem sempre cobrem todos os pontos. O prompt pede ao modelo que declare as limitações, mas isso também precisa ser avaliado.
+
+## Testes
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Os testes cobrem a limpeza, a sobreposição dos trechos, o limite do contexto, a busca por cosseno, a recarga do índice, arquivos alterados, credenciais ausentes e a montagem da chamada à OpenAI com uma resposta simulada. O teste simulado não substitui a execução com a API real.
+
+## Arquivos
+
+```text
+naive_rag.py                  implementação e comandos
+config.json                   parâmetros do experimento
+notebooks/naive_rag.ipynb      experimento no Jupyter
+evaluation/perguntas.json      cinco perguntas
+evaluation/rubrica.md          critérios de revisão
+tests/test_naive_rag.py        testes sem chamadas pagas
+results/                      relatórios do experimento
+resume.md                     andamento deste projeto
+```
+
+O PDF, o índice, o cache do modelo, a `.venv`, o `.env` e o `CHECKLIST_EXECUCAO.md` ficam apenas no computador e são ignorados pelo Git. Parent RAG e Rerank RAG são projetos separados, sem dependências de código entre os repositórios.
+
+## Referências
+
+- [PDF de Os Sertões](https://fundar.org.br/wp-content/uploads/2021/06/os-sertoes.pdf).
+- [Desafio e solução de referência da Rocketseat](https://github.com/rocketseat-education/ia-para-devs/tree/master/Desafio%20RAG).
+- [Instruções do multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small).
+- [Sentence Transformers](https://sbert.net/docs/quickstart.html).
+- [Extração de texto com pypdf](https://pypdf.readthedocs.io/en/stable/user/extract-text.html).
+- [SDK Python da OpenAI e Responses API](https://developers.openai.com/api/reference/python).
