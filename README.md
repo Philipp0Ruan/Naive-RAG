@@ -1,2 +1,66 @@
-# Naive-RAG
-Naive RAG
+# Naive RAG — Os Sertões
+
+Este projeto vai usar busca por similaridade para responder perguntas sobre **Os Sertões**, de Euclides da Cunha. A ideia é dividir o livro em trechos, encontrar os mais próximos de cada pergunta e entregar esse contexto ao modelo de linguagem.
+
+Faz parte do Desafio RAG, com três abordagens em repositórios separados:
+[Naive RAG](https://github.com/Philipp0Ruan/Naive-RAG),
+[Parent RAG](https://github.com/Philipp0Ruan/Parent-RAG) e
+[Rerank RAG](https://github.com/Philipp0Ruan/Rerank-RAG).
+
+## Situação atual
+
+A estrutura inicial está pronta. O notebook contém o roteiro de desenvolvimento; a leitura do PDF, a recuperação e a geração das respostas ainda serão implementadas. Ainda não há respostas geradas nem resultados de avaliação.
+
+## Como vai funcionar
+
+```text
+PDF → texto por página → trechos → embeddings → busca por similaridade → contexto → resposta com fontes
+```
+
+- **Dividir o texto:** Escolher tamanho dos trechos e sobreposição; preservar página, fonte e identificador de cada trecho.
+- **Criar a busca:** Gerar embeddings dos trechos, montar o índice e recuperar os k trechos mais próximos da pergunta.
+- **Montar o contexto:** Exibir os trechos recuperados com suas páginas e respeitar o limite de contexto antes de gerar a resposta.
+
+Este será o ponto de partida da comparação. Vamos observar quando a busca encontra o assunto certo, mas perde informações porque o trecho recuperado é curto.
+
+## Perguntas do desafio
+
+1. Qual é a visão de Euclides da Cunha sobre o ambiente natural do sertão nordestino e como ele influencia a vida dos habitantes?
+2. Quais são as principais características da população sertaneja descritas por Euclides da Cunha? Como ele relaciona essas características com o ambiente em que vivem?
+3. Qual foi o contexto histórico e político que levou à Guerra de Canudos, segundo Euclides da Cunha?
+4. Como Euclides da Cunha descreve a figura de Antônio Conselheiro e seu papel na Guerra de Canudos?
+5. Quais são os principais aspectos da crítica social e política presentes em "Os Sertões"? Como esses aspectos refletem a visão do autor sobre o Brasil da época?
+
+As perguntas também estão em [evaluation/perguntas.json](evaluation/perguntas.json), com identificadores iguais nos três projetos.
+
+## Organização
+
+```text
+notebooks/naive_rag.ipynb   # roteiro do experimento
+evaluation/perguntas.json     # cinco perguntas do desafio
+data/                        # PDF e dados extraídos, somente locais
+results/                     # respostas e avaliações, quando forem geradas
+```
+
+O notebook fica em [notebooks/naive_rag.ipynb](notebooks/naive_rag.ipynb).
+
+## Desenvolvimento e execução
+
+Vamos implementar o notebook por etapas: preparar o ambiente, carregar e conferir o livro, construir a recuperação, gerar as respostas e avaliar as evidências.
+
+Python e Jupyter serão usados para o experimento. O provedor do LLM, os modelos, as bibliotecas e suas versões serão definidos na implementação. As instruções de instalação e execução serão adicionadas aqui depois de validadas. Por enquanto, o notebook é um roteiro e não executa um pipeline RAG.
+
+## Como avaliar
+
+Os trechos recuperados pela busca por similaridade devem ser usados diretamente no contexto da resposta, com identificação das fontes.
+
+Para cada pergunta, vamos guardar a resposta, os trechos utilizados, as páginas, os parâmetros e o tempo de execução. A revisão vai conferir se a resposta atende à pergunta e se as fontes sustentam o que o modelo escreveu. Afirmações sem evidência devem ser identificadas, e o modelo deve indicar quando o contexto for insuficiente.
+
+Na comparação entre os projetos, vamos manter o mesmo PDF, as mesmas perguntas e, sempre que possível, o mesmo modelo de geração, embeddings, prompt e limite de contexto. As diferenças de configuração serão registradas junto dos resultados.
+
+## Material de referência
+
+- [PDF de Os Sertões disponibilizado pela Fundar](https://fundar.org.br/wp-content/uploads/2021/06/os-sertoes.pdf).
+- [Solução de referência da Rocketseat](https://github.com/rocketseat-education/ia-para-devs/tree/master/Desafio%20RAG).
+
+O PDF será salvo localmente em `data/os-sertoes.pdf`. A edição inclui material editorial; vamos separar esse conteúdo do texto de Euclides antes de avaliar as respostas e distinguir o número da página no PDF da numeração impressa no livro.
